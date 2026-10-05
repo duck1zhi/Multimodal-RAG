@@ -3,8 +3,9 @@ My project-Multimodal RAG
 
 本项目把「迪士尼RAG知识库」目录中的文档、图片解析成文本和图片向量，写入 FAISS 索引，再用自然语言提问检索并生成客服式回答。
 
-适用环境：Windows + Python 3.12。解析依赖本机 MinerU 4 API（默认 http://127.0.0.1:8000），向量和问答依赖阿里云 DashScope。
-
+适用环境：Windows + Python 3.12。解析优先调用 MinerU 官方云端 API（需设置 API Key）；
+若网页工具故障、云端调用失败，再改用本机部署的 MinerU 4（默认 http://127.0.0.1:8000，会占用较大显存）。
+向量和问答依赖阿里云 DashScope。
 
 一、下载后目录里有什么
 ------------------------
@@ -30,7 +31,7 @@ readme.txt             本说明
 【迪士尼RAG知识库.py】构建知识库
 
 1. 扫描「迪士尼RAG知识库」文件夹。
-2. 所有 PDF、DOC、DOCX、PPT、PPTX、图片都交给本机 MinerU 4 解析：
+2. 所有 PDF、DOC、DOCX、PPT、PPTX、图片都交给 MinerU 解析（优先官方云端 API）：
    - PDF、图片：standard 档（高质量 OCR/版面）
    - DOC/DOCX/PPT/PPTX：MinerU 原生 Office 解析（flash）
 3. 失败回退（原生解析失败时）：
@@ -78,15 +79,22 @@ readme.txt             本说明
 
   新开终端后若用「系统环境变量」，一般会自动生效；临时设置只对当前窗口有效。
 
-第 3 步 准备源文件
+第 3 步 配置 MinerU API Key（优先走云端，不要先开本机）
+
+  需要环境变量 MINERU_TOKEN（MinerU 官方 API Key，在 https://mineru.net 的 API 管理页创建）。
+  构建时优先用这份 Key 调官方云端解析，不占用本机显存。
+
+    $env:MINERU_TOKEN = "你的MinerU密钥"
+
+第 4 步 准备源文件
 
   把要入库的资料放到「迪士尼RAG知识库」目录（可分子文件夹）。
   支持：.pdf .doc .docx .ppt .pptx 以及常见图片（png/jpg/jpeg 等）。
   文件名含「价格/价目/票价」的图片会按价目表走 MinerU OCR。
 
-第 4 步 启动本机 MinerU 4（构建前必须开着）
+第 5 步 仅当云端 API 调用失败时，再启动本机 MinerU 4
 
-  MinerU 不包含在本仓库的 pip 依赖里，需本机单独部署 API。
+  本机部署会占用较大显存，用完请关掉。
   默认地址：http://127.0.0.1:8000
   本机若按本环境安装，可在 PowerShell 执行：
 
@@ -103,16 +111,16 @@ readme.txt             本说明
 
     $env:MINERU_API_BASE = "http://127.0.0.1:你的端口"
 
-第 5 步 构建索引
+第 6 步 构建索引
 
   另开一个 PowerShell，进入项目根目录：
 
     python 迪士尼RAG知识库.py
 
   首次会较慢（解析 + embedding）。看到「完成! 文本:xx, 图片:xx, 视频:xx」即成功。
-  构建结束后，到 MinerU 那个窗口按 Ctrl+C 停止服务，可释放显存。
+  若这次走的是本机 MinerU，构建结束后到那个窗口按 Ctrl+C 停止服务，可释放显存。
 
-第 6 步 提问查询（不需要 MinerU）
+第 7 步 提问查询（不需要 MinerU）
 
   确认根目录已有 disney_index.faiss 和 disney_metadata.json，然后：
 
@@ -126,12 +134,12 @@ readme.txt             本说明
 ------------
 
 - 先构建，再查询。没有索引文件时查询脚本会直接报错。
-- 构建期间 MinerU 必须在线。查询只走 DashScope，不必开 MinerU。
+- 查询只走 DashScope，不必开 MinerU。
 - 解析会复用 parsed_archive 里的 MinerU 产物；embedding 每次仍会重建整份 FAISS 索引。
   图片若已有 .npy 缓存则不再调图片向量接口。
 - 旧版仅 python-docx 生成的 Word 存档（没有 mineru_output）会重新交给 MinerU 解析。
 - 视频链接若带过期签名，失效后视频 embedding 会失败，需换成可访问地址后重建。
-- 本机构建脚本主流程是 MinerU 统一解析，没有 Office 也能跑原生解析。
+- 没有 Office 也能跑 MinerU 原生解析。
   只有 DOC/PPT 原生失败后的回退才需要本机 Word / PowerPoint。
   某个文件回退失败不会拦住后面的文件；只有 MinerU 队列卡住才会跳过后续解析。
   结果见 parsed_archive/parse_log.txt 和 parsed_archive/failed_files.txt。
@@ -140,15 +148,19 @@ readme.txt             本说明
 五、常见问题
 ------------
 
-1) 连接 127.0.0.1:8000 被拒绝
-   MinerU 没启动，或启动窗口已关闭。先完成第 4 步。
+1) MinerU 云端调用失败 / 网页工具故障
+   先确认已设置 MINERU_TOKEN，且密钥来自 mineru.net API 管理页。
+   云端仍然失败时，再按第 5 步启动本机 MinerU（会占用较大显存）。
 
-2) 提示未设置 DASHSCOPE_API_KEY
+2) 连接 127.0.0.1:8000 被拒绝
+   这只在走本机 MinerU 时会出现：服务没启动，或启动窗口已关闭。先完成第 5 步。
+
+3) 提示未设置 DASHSCOPE_API_KEY
    当前终端读不到该环境变量。设置后重新打开终端再跑。
 
-3) 任务栏看不到 PowerShell
-   若 MinerU 是在 Cursor 终端后台开的，不会出现独立窗口。到 Cursor 底部终端里找到
+4) 任务栏看不到 PowerShell
+   若本机 MinerU 是在 Cursor 终端后台开的，不会出现独立窗口。到 Cursor 底部终端里找到
    含 Uvicorn running 的那个，按 Ctrl+C 停止。
 
-4) 构建很慢或卡在「切分为 N 个 chunk」
+5) 构建很慢或卡在「切分为 N 个 chunk」
    正在调用 DashScope 做文本向量，不是死机。每个 chunk 一次网络请求。
