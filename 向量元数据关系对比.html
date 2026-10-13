@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>向量与元数据关系对比 · Native RAG vs 迪士尼多模态</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      themeVariables: {
+        primaryColor: "#dce8f5",
+        primaryTextColor: "#1a2a3a",
+        primaryBorderColor: "#3a6ea5",
+        secondaryColor: "#f0e6d8",
+        secondaryTextColor: "#2a2418",
+        secondaryBorderColor: "#8a6a3a",
+        tertiaryColor: "#e8f0e8",
+        lineColor: "#4a5568",
+        fontFamily: "IBM Plex Sans, Noto Sans SC, sans-serif",
+        fontSize: "15px"
+      },
+      flowchart: { curve: "basis", padding: 12 }
+    });
+  </script>
+  <style>
+    :root {
+      --ink: #1c2430;
+      --muted: #5a6675;
+      --paper: #f7f4ef;
+      --card: #ffffff;
+      --line: #d5d0c6;
+      --native: #2f5f8a;
+      --disney: #8a5a2b;
+      --accent: #1f6b4a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse 80% 50% at 10% 0%, #e4ebe4 0%, transparent 55%),
+        radial-gradient(ellipse 70% 40% at 90% 10%, #e8e0d4 0%, transparent 50%),
+        var(--paper);
+      font-family: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.65;
+    }
+
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 28px 80px;
+    }
+
+    header {
+      margin-bottom: 40px;
+      padding-bottom: 28px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    header .eyebrow {
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      font-family: "Libre Baskerville", "Noto Serif SC", Georgia, serif;
+      font-size: clamp(1.7rem, 3.5vw, 2.35rem);
+      font-weight: 700;
+      line-height: 1.25;
+      margin: 0 0 14px;
+    }
+
+    header p {
+      margin: 0;
+      max-width: 42em;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    h2 {
+      font-family: "Libre Baskerville", "Noto Serif SC", Georgia, serif;
+      font-size: 1.35rem;
+      margin: 48px 0 16px;
+      padding-left: 12px;
+      border-left: 4px solid var(--accent);
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin: 0 0 12px;
+    }
+
+    .lead {
+      color: var(--muted);
+      margin: 0 0 20px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 800px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 22px 22px 10px;
+      box-shadow: 0 1px 0 rgba(28, 36, 48, 0.04);
+    }
+
+    .panel.native { border-top: 3px solid var(--native); }
+    .panel.disney { border-top: 3px solid var(--disney); }
+
+    .panel .tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      padding: 3px 8px;
+      margin-bottom: 8px;
+      border-radius: 2px;
+      color: #fff;
+    }
+
+    .panel.native .tag { background: var(--native); }
+    .panel.disney .tag { background: var(--disney); }
+
+    .mermaid {
+      background: #faf9f7;
+      border: 1px dashed var(--line);
+      border-radius: 4px;
+      padding: 16px 8px;
+      margin: 12px 0 8px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--card);
+      border: 1px solid var(--line);
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      background: #efece6;
+      font-weight: 600;
+      width: 22%;
+    }
+
+    td:nth-child(2) { color: var(--native); }
+    td:nth-child(3) { color: var(--disney); }
+
+    tr:last-child td { border-bottom: none; }
+
+    code {
+      font-family: "IBM Plex Mono", Consolas, monospace;
+      font-size: 0.88em;
+      background: #efece6;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .callout {
+      margin-top: 28px;
+      padding: 18px 20px;
+      background: #e8f2ec;
+      border-left: 4px solid var(--accent);
+      color: #1a3d2c;
+    }
+
+    .callout strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    footer {
+      margin-top: 56px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Libre+Baskerville:wght@400;700&family=Noto+Sans+SC:wght@400;500;600&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <p class="eyebrow">Analysis · Vector &amp; Metadata Binding</p>
+      <h1>向量与元数据关系对比</h1>
+      <p>
+        对比 <code>RAG问答(LangChain).py</code>（Native RAG）与
+        <code>迪士尼RAG查询.py</code> / <code>迪士尼RAG知识库.py</code>（多模态）
+        中，向量索引与元数据如何协同、如何用编号取回可读内容。
+      </p>
+    </header>
+
+    <h2>一句话结论</h2>
+    <p class="lead">
+      两边都是「向量找近邻 → 用编号取元数据」。
+      Native 用 <strong>IndexIDMap 显式 ID</strong> 绑定；
+      迪士尼用 <strong>插入顺序下标</strong> 隐式绑定。
+    </p>
+
+    <h2>构建阶段：如何写入</h2>
+    <div class="grid-2">
+      <section class="panel native">
+        <span class="tag">Native RAG</span>
+        <h3>IndexIDMap + add_with_ids</h3>
+        <p class="lead">显式把列表下标写成 FAISS ID，向量与元数据用同一套 ID 对齐。</p>
+        <pre class="mermaid">
+flowchart TD
+  A[PDF 切分 chunks] --> B[metadata_store<br/>id / page / text]
+  B --> C[text-embedding-v4<br/>生成向量]
+  C --> D[IndexFlatL2]
+  D --> E[IndexIDMap 包装]
+  B --> F["ids = 0..n-1"]
+  C --> G[add_with_ids<br/>vectors, ids]
+  E --> G
+  F --> G
+  G --> H[(index.faiss)]
+  B --> I[(metadata.pkl)]
+  C --> J[(vectors.npy)]
+        </pre>
+      </section>
+
+      <section class="panel disney">
+        <span class="tag">迪士尼多模态</span>
+        <h3>IndexFlatL2 + add</h3>
+        <p class="lead">按写入顺序自动编号 0,1,2…；第 i 个向量对应 metadata[i]。</p>
+        <pre class="mermaid">
+flowchart TD
+  A[文档 / 图片 / 视频] --> B[各自 Embedding]
+  B --> C[all_vectors.append]
+  A --> D[metadata_store.append<br/>type / content / path / url]
+  C --> E[IndexFlatL2]
+  E --> F["index.add 向量<br/>行号 = 插入顺序"]
+  D --> G[(disney_metadata.json)]
+  F --> H[(disney_index.faiss)]
+  C -. 顺序必须一致 .-> D
+        </pre>
+      </section>
+    </div>
+
+    <h2>查询阶段：如何取回</h2>
+    <div class="grid-2">
+      <section class="panel native">
+        <span class="tag">Native RAG</span>
+        <h3>search → FAISS ID → 元数据</h3>
+        <pre class="mermaid">
+flowchart LR
+  Q[用户问题] --> E[embed_query]
+  E --> S["index.search → distances, ids"]
+  S --> M["metadata_store[faiss_id]"]
+  M --> R[拼 context + 页码]
+  R --> L[LLM 回答]
+        </pre>
+      </section>
+
+      <section class="panel disney">
+        <span class="tag">迪士尼多模态</span>
+        <h3>search → 行号 idx → 元数据</h3>
+        <pre class="mermaid">
+flowchart LR
+  Q[用户问题] --> E[文本 Embedding]
+  E --> S["index.search → distances, indices"]
+  S --> M["metadata[idx]"]
+  M --> T{按 type 筛选}
+  T -->|text| C[Top-k 文本进 Prompt]
+  T -->|image/video| V[阈值内取媒体]
+  C --> L[LLM 回答]
+  V --> L
+        </pre>
+      </section>
+    </div>
+
+    <h2>差异总览流程图</h2>
+    <section class="panel">
+      <p class="lead">同一目标、两种钥匙：显式 ID vs 位置下标。</p>
+      <pre class="mermaid">
+flowchart TB
+  subgraph common [共同目标]
+    G1[向量近邻检索] --> G2[用编号取元数据] --> G3[拼上下文 / 返回答案]
+  end
+
+  subgraph native [Native: 显式 ID]
+    N1[IndexIDMap] --> N2[add_with_ids]
+    N2 --> N3[检索返回自定义 ID]
+    N3 --> N4["metadata_store[id]"]
+  end
+
+  subgraph disney [迪士尼: 隐式顺序]
+    D1[IndexFlatL2] --> D2[add 按序写入]
+    D2 --> D3[检索返回行号 idx]
+    D3 --> D4["metadata[idx]"]
+  end
+
+  common --> native
+  common --> disney
+
+  N4 --> OUT1[稳定：删改后仍可按 ID 对齐]
+  D4 --> OUT2[简单：必须保证向量与元数据顺序同步]
+      </pre>
+    </section>
+
+    <h2>对照表</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>维度</th>
+          <th>Native RAG（LangChain）</th>
+          <th>迪士尼多模态</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>索引类型</th>
+          <td><code>IndexFlatL2</code> + <code>IndexIDMap</code></td>
+          <td>纯 <code>IndexFlatL2</code></td>
+        </tr>
+        <tr>
+          <th>写入方式</th>
+          <td><code>add_with_ids(vectors, ids)</code></td>
+          <td><code>index.add(vectors)</code></td>
+        </tr>
+        <tr>
+          <th>检索返回</th>
+          <td>自定义 FAISS ID</td>
+          <td>向量行号 <code>idx</code></td>
+        </tr>
+        <tr>
+          <th>取元数据</th>
+          <td><code>metadata_store[faiss_id]</code></td>
+          <td><code>metadata[idx]</code></td>
+        </tr>
+        <tr>
+          <th>元数据字段</th>
+          <td><code>id</code> / <code>page</code> / <code>text</code></td>
+          <td><code>type</code> / <code>content</code> / <code>path</code> / <code>url</code> 等</td>
+        </tr>
+        <tr>
+          <th>落盘文件</th>
+          <td><code>index.faiss</code> + <code>metadata.pkl</code> + <code>vectors.npy</code></td>
+          <td><code>disney_index.faiss</code> + <code>disney_metadata.json</code></td>
+        </tr>
+        <tr>
+          <th>增删改鲁棒性</th>
+          <td>较高：ID 层可独立于物理行号</td>
+          <td>依赖顺序：列表与索引必须同步重建</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <strong>当前为何两边写法看起来很像？</strong>
+      Native 把 <code>id</code> 也设成了 <code>0..n-1</code>，所以也能写成 <code>metadata[编号]</code>。
+      一旦以后删除或重排条目，Native 仍可按 ID 对齐；迪士尼则必须保证向量顺序与元数据列表永远一致。
+    </div>
+
+    <footer>
+      源文件：<code>h:\MY_KB\My project-native RAG\RAG问答(LangChain).py</code>
+      ·
+      <code>迪士尼RAG知识库.py</code> / <code>迪士尼RAG查询.py</code>
+    </footer>
+  </div>
+</body>
+</html>

@@ -81,7 +81,7 @@ OFFICE_EXTS = {".doc", ".docx", ".ppt", ".pptx"}
 # 视频知识库
 VIDEO_KNOWLEDGE = [
     {
-        "url": "https://sns-video-v3.xhscdn.com/stream/1/110/259/01e98c2323b7b8cb010370039c4b6a558e_259.mp4?sign=67a9ef402af690fba00f0ea564d54b83&t=6ac47759",
+        "url": "https://desiney.oss-cn-beijing.aliyuncs.com/%E7%AC%AC%E4%B8%80%E6%AC%A1%E5%8E%BB%E8%BF%AA%E5%A3%AB%E5%B0%BC%E7%9A%84%E9%81%BF%E5%9D%91%E6%94%BB%E7%95%A5%E2%80%BC%EF%B8%8F.mp4",
         "description": "第一次去迪士尼的避坑攻略"
     }
 ]
@@ -903,27 +903,45 @@ def build_and_save():
     process_with_mineru("price_images", price_images, "处理价目表截图", keep_original=True)
     process_with_mineru("images", other_images, "处理图片", embed_original=True)
 
-    # 处理视频
+    # 处理视频：URL 无法识别/提取视频时跳过解析与 embedding
     print("  处理视频...")
     for video_info in VIDEO_KNOWLEDGE:
-        print(f"    - {video_info['description']}")
+        desc = video_info["description"]
+        url = video_info["url"]
+        print(f"    - {desc}")
+        write_parse_log(f"处理视频: {desc} | {url}")
+        try:
+            vector = get_video_embedding(url)
+        except Exception as e:
+            # URL 不一定能提取到可 embedding 的视频，识别失败则跳过
+            skip_msg = f"跳过视频（无法识别/embedding）: {desc} | {e}"
+            print(f"    {skip_msg}")
+            write_parse_log(skip_msg)
+            failed_items.append({
+                "source": desc,
+                "category": "video",
+                "stage": "跳过",
+                "reason": f"无法识别视频URL或embedding失败: {e}"
+            })
+            continue
+
         metadata = {
             "id": doc_id,
-            "source": f"视频: {video_info['description']}",
+            "source": f"视频: {desc}",
             "type": "video",
-            "url": video_info["url"],
-            "description": video_info["description"],
-            "content": f"[视频] {video_info['description']}"
+            "url": url,
+            "description": desc,
+            "content": f"[视频] {desc}"
         }
-        vector = get_video_embedding(video_info["url"])
         all_vectors.append(vector)
         metadata_store.append(metadata)
         doc_id += 1
         manifest.append({
             "category": "video",
-            "source": video_info["description"],
-            "url": video_info["url"]
+            "source": desc,
+            "url": url
         })
+        write_parse_log(f"视频入库成功: {desc}")
 
     write_manifest(manifest)
     write_failed_list(failed_items)
